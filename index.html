@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ガザル詩テンプレート</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .maqta-couplet { background: linear-gradient(135deg, #fef9c3, #fde68a); border-left: 4px solid #d97706; }
+  .couplet-card { transition: all 0.2s; }
+  textarea { resize: vertical; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 to-orange-50 min-h-screen">
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <div class="text-center mb-6">
+    <h1 class="text-3xl font-bold text-amber-900 mb-1">ガザル詩 テンプレート</h1>
+    <p class="text-amber-700 text-sm">غزل — アラビア・ペルシャ・ウルドゥー語の連詩形式</p>
+  </div>
+
+  <!-- Info card -->
+  <div class="bg-amber-100 border border-amber-300 rounded-lg p-4 mb-6 text-sm text-amber-800">
+    <strong>ガザルの構造:</strong>
+    <ul class="mt-1 ml-4 list-disc space-y-1">
+      <li><strong>シェール (Sher)</strong>: 二行連句（上句 Misra-e-Ula + 下句 Misra-e-Sani）</li>
+      <li><strong>マトラ (Matla)</strong>: 冒頭連句。両行がカーフィヤ+ラディーフで終わる</li>
+      <li><strong>カーフィヤ (Qafia)</strong>: 韻文の韻（各シェール下句に登場）</li>
+      <li><strong>ラディーフ (Radif)</strong>: カーフィヤの後の繰り返し語句</li>
+      <li><strong>マクタア (Maqta)</strong>: 最後の連句。詩人の名前/ペンネームが入る</li>
+    </ul>
+  </div>
+
+  <!-- Settings -->
+  <div class="bg-white rounded-lg shadow p-5 mb-5">
+    <h2 class="font-semibold text-gray-700 mb-3">詩の設定</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">ラディーフ (Radif) — 繰り返し語句</label>
+        <input type="text" id="radif" placeholder="例: の夜" oninput="updatePreview()" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">カーフィヤ (Qafia) — 韻</label>
+        <input type="text" id="qafia" placeholder="例: 月 / 花 / 夢" oninput="updatePreview()" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">詩人名 / ペンネーム（マクタア用）</label>
+        <input type="text" id="poet-name" placeholder="例: 秋風" oninput="updatePreview()" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">詩のタイトル</label>
+        <input type="text" id="poem-title" placeholder="（任意）" oninput="updatePreview()" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400">
+      </div>
+    </div>
+  </div>
+
+  <!-- Couplets editor -->
+  <div class="bg-white rounded-lg shadow p-5 mb-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-gray-700">連句入力 (Sher)</h2>
+      <button onclick="addCouplet()" class="bg-amber-600 text-white px-4 py-1 rounded text-sm hover:bg-amber-700">+ 連句追加</button>
+    </div>
+    <div id="couplets-container" class="space-y-4"></div>
+  </div>
+
+  <!-- Preview -->
+  <div class="bg-white rounded-lg shadow p-5 mb-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-gray-700">プレビュー</h2>
+      <button onclick="copyPoem()" class="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700">📋 コピー</button>
+    </div>
+    <div id="preview" class="font-serif text-gray-800 leading-relaxed whitespace-pre-wrap min-h-16 p-3 bg-amber-50 rounded border border-amber-200"></div>
+  </div>
+
+  <div id="copy-toast" class="hidden fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2 rounded shadow-lg text-sm">クリップボードにコピーしました！</div>
+</div>
+
+<script>
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+let couplets = [
+  { line1: '', line2: '' },
+  { line1: '', line2: '' },
+  { line1: '', line2: '' },
+];
+
+function renderCouplets() {
+  const container = document.getElementById('couplets-container');
+  container.innerHTML = '';
+  couplets.forEach((c, i) => {
+    const isMatla = i === 0;
+    const isMaqta = i === couplets.length - 1;
+    const div = document.createElement('div');
+    div.className = 'couplet-card rounded-lg border p-4 ' + (isMaqta ? 'maqta-couplet' : 'border-gray-200 bg-gray-50');
+
+    const header = document.createElement('div');
+    header.className = 'flex items-center justify-between mb-2';
+    const badge = document.createElement('span');
+    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded ' + (isMatla ? 'bg-blue-100 text-blue-700' : isMaqta ? 'bg-amber-200 text-amber-800' : 'bg-gray-100 text-gray-600');
+    badge.textContent = isMatla ? `第1連句 (Matla)` : isMaqta ? `第${i+1}連句 (Maqta ⭐)` : `第${i+1}連句`;
+    header.appendChild(badge);
+    if (couplets.length > 2) {
+      const btn = document.createElement('button');
+      btn.className = 'text-red-400 hover:text-red-600 text-xs';
+      btn.textContent = '削除';
+      btn.onclick = () => removeCouplet(i);
+      header.appendChild(btn);
+    }
+    div.appendChild(header);
+
+    const radif = document.getElementById('radif').value;
+    const qafia = document.getElementById('qafia').value;
+    const refrain = (qafia ? qafia + ' ' : '') + (radif || '〜');
+
+    // Line 1
+    const lbl1 = document.createElement('label');
+    lbl1.className = 'block text-xs text-gray-500 mb-1';
+    lbl1.textContent = isMatla ? `上句 (Misra-e-Ula) — 末尾: ${refrain}` : '上句 (Misra-e-Ula)';
+    const ta1 = document.createElement('textarea');
+    ta1.className = 'w-full border rounded px-3 py-2 text-sm mb-2 focus:ring-2 focus:ring-amber-400';
+    ta1.rows = 2;
+    ta1.placeholder = isMatla ? `（上句）...${refrain}` : '（上句）';
+    ta1.value = c.line1;
+    ta1.oninput = () => { couplets[i].line1 = ta1.value; updatePreview(); };
+
+    const lbl2 = document.createElement('label');
+    lbl2.className = 'block text-xs text-gray-500 mb-1';
+    lbl2.textContent = `下句 (Misra-e-Sani) — 末尾: ${refrain}`;
+    const ta2 = document.createElement('textarea');
+    ta2.className = 'w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400';
+    ta2.rows = 2;
+    ta2.placeholder = isMaqta ? `（詩人名）${escapeHtml(document.getElementById('poet-name').value||'[詩人名]')} ...${refrain}` : `（下句）...${refrain}`;
+    ta2.value = c.line2;
+    ta2.oninput = () => { couplets[i].line2 = ta2.value; updatePreview(); };
+
+    div.appendChild(lbl1); div.appendChild(ta1);
+    div.appendChild(lbl2); div.appendChild(ta2);
+    container.appendChild(div);
+  });
+}
+
+function addCouplet() {
+  couplets.push({ line1: '', line2: '' });
+  renderCouplets();
+  updatePreview();
+}
+
+function removeCouplet(i) {
+  couplets.splice(i, 1);
+  renderCouplets();
+  updatePreview();
+}
+
+function updatePreview() {
+  renderCouplets();
+  const title = document.getElementById('poem-title').value.trim();
+  const radif = document.getElementById('radif').value.trim();
+  const qafia = document.getElementById('qafia').value.trim();
+  const refrain = (qafia ? qafia + ' ' : '') + (radif || '');
+
+  let lines = [];
+  if (title) lines.push(title + '\n');
+  couplets.forEach((c, i) => {
+    const isMaqta = i === couplets.length - 1;
+    const l1 = c.line1 || `（第${i+1}連句 上句）`;
+    const l2 = c.line2 || `（第${i+1}連句 下句）`;
+    lines.push(l1 + (refrain ? ' ' + refrain : ''));
+    lines.push(l2 + (refrain ? ' ' + refrain : ''));
+    if (isMaqta) lines.push('  ※ Maqta');
+    lines.push('');
+  });
+
+  const preview = document.getElementById('preview');
+  preview.textContent = lines.join('\n');
+}
+
+function copyPoem() {
+  const text = document.getElementById('preview').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('copy-toast');
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2000);
+  });
+}
+
+renderCouplets();
+updatePreview();
+</script>
+</body>
+</html>
